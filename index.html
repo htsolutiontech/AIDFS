@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI.DFS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #070b14; --card-bg: #111c2e; --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8; --accent-cyan: #00dfee; --accent-blue: #3b82f6;
+            --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { margin: 0; background-color: var(--bg-dark); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; font-size: 13px; }
+        .sidebar { width: 250px; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05); padding: 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .nav-item { padding: 12px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+        .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--accent-cyan); border: 1px solid rgba(59, 130, 246, 0.2); font-weight: 800; }
+        .main-content { flex: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        #map { height: 500px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); background: #000; }
+        .card { background: var(--card-bg); border-radius: 18px; padding: 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .card-label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+        .scenario-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .s-tab { padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: #1e293b; color: var(--text-secondary); cursor: pointer; font-weight: bold; font-size: 0.75rem; }
+        .s-tab.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .table-container { border-radius: 15px; overflow: hidden; border: 1px solid #1e293b; background: rgba(0,0,0,0.2); }
+        .custom-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .custom-table th { padding: 12px 15px; background: #0f172a; color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; position: sticky; top: 0; }
+        .custom-table td { padding: 12px 15px; border-bottom: 1px solid #0f172a; font-size: 0.8rem; }
+        .action-btn { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; text-transform: uppercase; font-size: 0.7rem; color: white; }
+        .alert-toast { position: fixed; bottom: 20px; right: 20px; background: var(--danger); padding: 15px 25px; border-radius: 12px; color: white; font-weight: 800; z-index: 3000; box-shadow: 0 10px 30px rgba(239,68,68,0.5); display: none; }
+        @media (max-width: 1024px) { body { flex-direction: column; } .sidebar { width: 100%; height: auto; flex-direction: row; } }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="font-weight: 900; color: var(--accent-cyan); font-size: 1.3rem; margin-bottom: 5px;"><i class="fas fa-shield-virus"></i> AI.DFS</div>
+        <div style="font-size: 0.6rem; color: var(--success); font-weight: 800; padding-bottom: 25px;">@2025 BinhMinhAI</div>
+        <nav class="space-y-1">
+            <div id="nav-gis" class="nav-item active" onclick="switchView('gis', this)"><i class="fas fa-map-location-dot"></i> Điều hành GIS & Buffer</div>
+            <div id="nav-forecast" class="nav-item" onclick="switchView('forecast', this)"><i class="fas fa-project-diagram"></i> 3 Kịch bản ML</div>
+            <div id="nav-res" class="nav-item" onclick="switchView('resource', this)"><i class="fas fa-truck-ramp-box"></i> Nguồn lực CDC</div>
+            <div id="nav-data" class="nav-item" onclick="switchView('dataset', this)"><i class="fas fa-database"></i> Dữ liệu WHO (5k)</div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div id="gis-view" class="view-section active">
+            <h2 style="font-weight: 900; text-transform: uppercase; margin-bottom: 25px;">GIÁM SÁT DỊCH TỄ GIS ĐỘNG (HCM)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="md:col-span-3 card" style="padding: 0; overflow: hidden;"><div id="map"></div></div>
+                <div class="space-y-4">
+                    <div class="card border-l-4 border-danger">
+                        <p class="card-label">Trạng thái Vùng đệm ($R$)</p>
+                        <p id="zone-title" style="font-size: 1.1rem; font-weight: 900; color: var(--danger);">Quận 8 - Cluster Alpha</p>
+                        <p style="font-size: 0.85rem;">Bán kính thực: <b id="radius-val">2000m</b></p>
+                        <p style="font-size: 0.85rem;">Ngưỡng CDC: <b class="text-warning">> 5000m</b></p>
+                        <hr style="opacity: 0.1; margin: 12px 0;">
+                        <button class="action-btn" style="background: var(--danger); width: 100%;" onclick="triggerEmailTest(6500, 'Bình Chánh')">
+                            <i class="fas fa-paper-plane"></i> KÍCH HOẠT $R=6.5KM$ (GỬI MAIL)
+                        </button>
+                    </div>
+                    <div class="card" style="background: rgba(0,0,0,0.2);"><p class="card-label">Trạm Y tế bị ảnh hưởng</p>
+                        <ul id="node-list" style="font-size: 0.75rem; padding-left: 15px; line-height: 1.8;">
+                            <li>TYT Phường 4, Quận 8</li>
+                            <li>TYT Phường 15, Quận 8</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="forecast-view" class="view-section">
+            <h2 style="font-weight: 900; text-transform: uppercase; margin-bottom: 25px;">DỰ BÁO MACHINE LEARNING 3 GIAI ĐOẠN</h2>
+            <div class="scenario-tabs">
+                <button class="s-tab active" onclick="updateScenario('short', this)">Ngắn hạn</button>
+                <button class="s-tab" onclick="updateScenario('medium', this)">Trung hạn</button>
+                <button class="s-tab" onclick="updateScenario('long', this)">Dài hạn</button>
+            </div>
+            <div class="card" style="height: 400px;"><canvas id="scenarioChart"></canvas></div>
+        </div>
+
+        <div id="resource-view" class="view-section">
+            <h2 style="font-weight: 900; text-transform: uppercase; margin-bottom: 25px;">KHO NGUỒN LỰC CDC (312 TRẠM Y TẾ)</h2>
+            <div class="card"><table class="custom-table" id="inventoryTable"><thead><tr><th>TYT</th><th>Vắc-xin (Liều)</th><th>Hóa chất (kg)</th><th>Tình trạng</th></tr></thead><tbody id="inventoryBody"></tbody></table></div>
+        </div>
+
+        <div id="dataset-view" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 style="font-weight: 900; text-transform: uppercase; margin: 0;">WHO DATASET (5,000 HỒ SƠ)</h2>
+                <button class="action-btn" style="background: var(--success);" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> XUẤT EXCEL FULL</button>
+            </div>
+            <div class="table-container shadow-2xl">
+                <table class="custom-table"><thead><tr><th>ID</th><th>Địa bàn</th><th>Bệnh lý</th><th>Triệu chứng</th><th>Trạng thái</th></tr></thead><tbody id="datasetBody"></tbody></table>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #0f172a;">
+                    <button class="s-tab" onclick="changePage(-1)">Trước</button>
+                    <div style="font-weight: 800; color: var(--accent-cyan);">Trang <span id="pageCurrent">1</span> / 100</div>
+                    <button class="s-tab" onclick="changePage(1)">Sau</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="emailToast" class="alert-toast"></div>
+
+    <script>
+        // --- 1. EMAILJS CONFIGURATION ---
+        const EMAILJS_CONFIG = {
+            PUBLIC_KEY: "NTDiP5LyGYSJdGFYl", // ĐÃ FIX: Điền Key của bạn tại đây
+            SERVICE_ID: "service_e8hhibe", 
+            TEMPLATE_ID: "template_t394r96"
+        };
+
+        (function() { emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY); })();
+
+        async function sendAlertEmail(radius, zone) {
+            const toast = document.getElementById('emailToast');
+            toast.style.display = 'block';
+            toast.style.background = 'var(--accent-blue)';
+            toast.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ĐANG GỬI THÔNG BÁO TỚI CDC...`;
+
+            const templateParams = {
+                to_emails: "hoangthuong.vu@hoangphucthanh.vn, htsolutiontech@gmail.com, phamtungphuong02@gmail.com",
+                from_email: "hoangthuong.vu@hoangphucthanh.vn",
+                subject: `[CẢNH BÁO DỊCH BỆNH] Vùng ${zone} mở rộng R=${radius}m`,
+                message: "Đây là thông tin thử nghiệm hệ thống AI.DFS dự báo dịch bệnh. Vui lòng không cần phản hồi lại mail này"
+            };
+
+            try {
+                // ĐÃ FIX: Sử dụng dấu backtick cho các tham số chuỗi
+                await emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_ID, templateParams);
+                toast.style.background = 'var(--success)';
+                toast.innerHTML = `<i class="fas fa-check-circle mr-2"></i> EMAIL ĐÃ GỬI THÀNH CÔNG!`;
+                console.log("Email sent successfully to recipients.");
+            } catch (error) {
+                toast.style.background = 'var(--danger)';
+                toast.innerHTML = `<i class="fas fa-times-circle mr-2"></i> LỖI: KIỂM TRA PUBLIC KEY`;
+                console.error("EmailJS Error:", error);
+            }
+            setTimeout(() => { toast.style.display = 'none'; }, 6000);
+        }
+
+        // --- 2. GIS & TRIGGER LOGIC ---
+        let map, scenarioChart;
+        const fullDataset = [];
+        let currentPage = 1;
+
+        function initMap() {
+            map = L.map('map').setView([10.762622, 106.660172], 12);
+            // Sử dụng Google Satellite tiles động
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
+            L.circle([10.741, 106.671], { color: '#ef4444', radius: 2000, fillOpacity: 0.2 }).addTo(map);
+        }
+
+        function triggerEmailTest(r, zone) {
+            // ĐÃ FIX: Chuyển sang dấu backtick để giá trị biến hiển thị đúng
+            document.getElementById('radius-val').innerText = `${r}m`;
+            document.getElementById('zone-title').innerText = `${zone.toUpperCase()} (BÁO ĐỘNG)`;
+            
+            L.circle([10.701, 106.601], { color: '#ef4444', radius: r, weight: 3, dashArray: '10, 10' }).addTo(map);
+            
+            if (r > 5000) {
+                sendAlertEmail(r, zone);
+            }
+        }
+
+        // --- 3. ML SCENARIOS & DATA ---
+        function updateScenario(type, el) {
+            document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            const dataSets = { 
+                'short': [45,52,68,85,72,58,50], 
+                'medium': [210,340,480,520,400,310], 
+                'long': [1200,1800,2500,1100,900,1400] 
+            };
+            scenarioChart.data.datasets[0].data = dataSets[type];
+            scenarioChart.update();
+        }
+
+        function initScenarioChart() {
+            const ctx = document.getElementById('scenarioChart').getContext('2d');
+            scenarioChart = new Chart(ctx, { 
+                type: 'line', 
+                data: { labels: ['T2','T3','T4','T5','T6','T7','CN'], datasets: [{ label: 'Ca bệnh dự báo', data: [45,52,68,85,72,58,50], borderColor: '#00dfee', backgroundColor: 'rgba(0, 223, 238, 0.1)', fill: true, tension: 0.4 }] }, 
+                options: { responsive: true, maintainAspectRatio: false } 
+            });
+        }
+
+        function generateData() {
+            const districts = ["Quận 1", "Quận 3", "Quận 5", "Quận 8", "Bình Chánh", "Hóc Môn", "Thủ Đức"];
+            for(let i=1; i<=5000; i++) {
+                fullDataset.push({ 
+                    id: `EPI-HCM-${i.toString().padStart(4, '0')}`, 
+                    dist: districts[Math.floor(Math.random()*7)], 
+                    type: ["Sốt xuất huyết", "ARI", "Cúm mùa"][Math.floor(Math.random()*3)], 
+                    status: "Confirmed" 
+                });
+            }
+            const invBody = document.getElementById('inventoryBody');
+            invBody.innerHTML = districts.slice(0, 5).map(d => `<tr><td><b>TYT Phường/Xã ${d}</b></td><td>${Math.floor(Math.random()*500)}</td><td>${Math.floor(Math.random()*200)}</td><td><span class="text-success">READY</span></td></tr>`).join('');
+        }
+
+        function renderDataset() {
+            const body = document.getElementById('datasetBody');
+            // ĐÃ FIX: Chuyển sang dấu backtick cho các dòng bảng
+            body.innerHTML = fullDataset.slice((currentPage-1)*50, currentPage*50).map(r => `
+                <tr>
+                    <td><b>${r.id}</b></td>
+                    <td>${r.dist}</td>
+                    <td>${r.type}</td>
+                    <td>Sốt, Ho, Phát ban</td>
+                    <td><span class="text-success">${r.status}</span></td>
+                </tr>
+            `).join('');
+            document.getElementById('pageCurrent').innerText = currentPage;
+        }
+
+        function changePage(dir) { 
+            currentPage = Math.max(1, Math.min(100, currentPage + dir)); 
+            renderDataset(); 
+        }
+
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(fullDataset);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "CDC_HCMC_Dataset");
+            XLSX.writeFile(wb, "Nexus_Master_EPI_Report.xlsx");
+        }
+
+        function switchView(id, el) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(id + '-view').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            if(id === 'gis') setTimeout(() => map.invalidateSize(), 400);
+        }
+
+        window.onload = () => { initMap(); initScenarioChart(); generateData(); renderDataset(); };
+    </script>
+</body>
+</html>

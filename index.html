@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI.DFS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #070b14; --card-bg: #111c2e; --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8; --accent-cyan: #00dfee; --accent-blue: #3b82f6;
+            --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+            --zalo-blue: #0068ff; --flow-color: #f1c40f;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { margin: 0; background-color: var(--bg-dark); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; font-size: 15px; }
+        
+        /* Sidebar - Fixed Scale */
+        .sidebar { width: 300px; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05); padding: 30px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+        .nav-item { padding: 16px 20px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: var(--text-secondary); font-size: 1rem; font-weight: 600; transition: 0.2s; }
+        .nav-item.active { background: rgba(59, 130, 246, 0.15); color: var(--accent-cyan); border: 1px solid rgba(59, 130, 246, 0.2); font-weight: 800; }
+
+        /* Content Area - Expanded */
+        .main-content { flex: 1; overflow-y: auto; padding: 40px; scrollbar-width: thin; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* Disease Selector - Large UI */
+        .disease-selector { display: flex; gap: 15px; margin-bottom: 30px; background: #0f172a; padding: 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .disease-btn { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .disease-btn.active { background: var(--accent-blue); color: white; box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4); border: none; }
+
+        /* GIS & Metrics */
+        #map { height: 550px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); background: #000; z-index: 1; box-shadow: 0 15px 50px rgba(0,0,0,0.6); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 30px; }
+        .card-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase; font-weight: 900; letter-spacing: 1.5px; }
+
+        /* Metrics HUD */
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
+        .metric-box { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.03); text-align: center; }
+        .metric-val { font-size: 2rem; font-weight: 900; color: var(--accent-cyan); display: block; }
+        .metric-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-top: 8px; }
+
+        /* Fleet & Coordination */
+        .fleet-container { height: 200px; overflow-y: auto; padding-right: 10px; }
+        .amb-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; }
+
+        /* Table & Action */
+        .table-container { border-radius: 24px; overflow: hidden; border: 1px solid #1e293b; background: rgba(0,0,0,0.3); }
+        .custom-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .custom-table th { padding: 18px 25px; background: #0f172a; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; font-weight: 800; }
+        .custom-table td { padding: 16px 25px; border-bottom: 1px solid #0f172a; font-size: 0.9rem; }
+
+        .action-btn { padding: 14px 25px; border-radius: 14px; border: none; font-weight: 900; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 12px; text-transform: uppercase; font-size: 0.8rem; color: white; }
+        
+        .zalo-toast { position: fixed; bottom: 40px; right: 40px; background: var(--zalo-blue); padding: 25px 35px; border-radius: 22px; color: white; font-weight: 700; z-index: 3000; box-shadow: 0 20px 50px rgba(0,104,255,0.6); display: none; }
+
+        @media (max-width: 1024px) { body { flex-direction: column; } .sidebar { width: 100%; height: auto; flex-direction: row; overflow-x: auto; padding: 20px; } .main-content { padding: 25px; } }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="font-weight: 900; color: var(--accent-cyan); font-size: 1.8rem; margin-bottom: 8px;"><i class="fas fa-microchip"></i> AI.DFS</div>
+        <div style="font-size: 0.7rem; color: var(--success); font-weight: 800; padding-bottom: 30px;"><i class="fas fa-shield-virus mr-1 animate-pulse"></i>Disease forecast</div>
+        <nav class="space-y-1">
+            <div id="nav-forecast" class="nav-item" onclick="switchView('forecast', this)"><i class="fas fa-chart-line"></i> Dự báo AI dịch bệnh</div>
+              <div id="nav-gis" class="nav-item active" onclick="switchView('gis', this)"><i class="fas fa-map-location-dot"></i> GIS & Điều phối YT</div>
+         
+            <div id="nav-res" class="nav-item" onclick="switchView('resource', this)"><i class="fas fa-boxes-stacked"></i> Nguồn lực TYT</div>
+            <div id="nav-data" class="nav-item" onclick="switchView('dataset', this)"><i class="fas fa-database"></i> WHO Dataset (5k)</div>
+        </nav>
+        <div style="margin-top:auto; font-size: 0.65rem; color: var(--text-secondary); line-height: 1.6;">@2025 BinhMinhAI <br>Epidemiological Intelligence</div>
+    </aside>
+
+    <main class="main-content">
+        <div class="disease-selector">
+            <button class="disease-btn active" onclick="switchDisease('ARI', this)"><i class="fas fa-lungs mr-2"></i> Viêm đường hô hấp (ARI)</button>
+            <button class="disease-btn" onclick="switchDisease('Dengue', this)"><i class="fas fa-mosquito mr-2"></i> Dengue (Sốt xuất huyết)</button>
+            <button class="disease-btn" onclick="switchDisease('Flu', this)"><i class="fas fa-virus mr-2"></i> Cúm mùa (Influenza)</button>
+        </div>
+
+        <div id="gis-view" class="view-section active">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+                <div class="md:col-span-3">
+                    <div id="map"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                        <div class="card">
+                            <p class="card-label">Năng lực tiếp nhận BV (Vùng đệm R)</p>
+                            <div style="height: 200px;"><canvas id="hospitalCapacityChart"></canvas></div>
+                        </div>
+                        <div class="card">
+                            <p class="card-label">AI: Phân tích luồng bệnh và Vaccine</p>
+                            <div id="aiExplainText" style="font-size:13px; line-height:1.8; color:var(--text-secondary); border-left: 5px solid var(--accent-cyan); padding-left: 20px;">
+                                Đang tải phân tích luồng di chuyển mầm bệnh từ các Node TYT trọng điểm... (Ref: WHO Guideline 2025)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-8">
+                    <div class="card border-l-4 border-danger">
+                        <p class="card-label">Trạng thái Vùng đệm ($R$)</p>
+                        <p id="zone-title" style="font-size: 1.3rem; font-weight: 900; color: var(--danger);">Quận 8 - Cluster Alpha</p>
+                        <p style="font-size: 1rem;">Bán kính thực: <b id="radius-val">2000m</b></p>
+                        <hr style="opacity: 0.1; margin: 15px 0;">
+                        <button class="action-btn" style="background: var(--danger); width: 100%;" onclick="triggerZaloAlert(6500, 'Bình Chánh')">
+                            <i class="fas fa-comment-medical"></i> BÁO ĐỘNG ZALO ($R>5KM$)
+                        </button>
+                    </div>
+                    <div class="card">
+                        <p class="card-label">Đội xe cấp cứu trực chiến (HCM)</p>
+                        <div class="fleet-container" id="ambulanceFleet"></div>
+                        <p id="fleet-advice" style="font-size: 12px; color: var(--accent-cyan); margin-top: 20px; font-weight: 700;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="forecast-view" class="view-section">
+            <h2 style="font-weight: 900; text-transform: uppercase; margin-bottom: 30px;">DỰ BÁO MACHINE LEARNING (SIR & LSTM)</h2>
+            
+            <div class="metrics-grid">
+                <div class="metric-box"><span class="metric-val" id="maeVal">4.2</span><span class="metric-label">MAE (WHO Std)</span></div>
+                <div class="metric-box"><span class="metric-val" id="rmseVal">6.8</span><span class="metric-label">RMSE (Sai số bình phương)</span></div>
+                <div class="metric-box"><span class="metric-val" id="accVal">96.2%</span><span class="metric-label">Accuracy (Độ chính xác)</span></div>
+                <div class="metric-box"><span class="metric-val" id="r0Val">1.15</span><span class="metric-label">SIR Index ($R_0$)</span></div>
+            </div>
+
+            <div class="card" style="height: 550px;">
+                <p class="card-label">BIẾN ĐỘNG CA BỆNH DỰ BÁO 7 NGÀY (SIR CURVE)</p>
+                <canvas id="scenarioChart"></canvas>
+            </div>
+        </div>
+
+        <div id="resource-view" class="view-section">
+            <h2 style="font-weight: 900; text-transform: uppercase; margin-bottom: 30px;">QUẢN LÝ NGUỒN LỰC & VẮC-XIN (312 TYT)</h2>
+            <div class="card"><table class="custom-table" id="inventoryTable"><thead><tr><th>Trạm Y tế Nguồn</th><th>Vắc-xin (Cơ số)</th><th>Hóa chất (kg)</th><th>Tình trạng</th></tr></thead><tbody id="inventoryBody"></tbody></table></div>
+        </div>
+
+        <div id="dataset-view" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h2 style="font-weight: 900; text-transform: uppercase; margin: 0;">WHO DATASET SAMPLE</h2>
+                <button class="action-btn" style="background: var(--success);" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> XUẤT EXCEL FULL</button>
+            </div>
+            <div class="table-container shadow-2xl">
+                <table class="custom-table"><thead><tr><th>Record ID</th><th>Quận/Huyện</th><th>Bệnh lý</th><th>Triệu chứng WHO</th><th>Trạng thái</th></tr></thead><tbody id="datasetBody"></tbody></table>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 25px; background: #0f172a;">
+                    <button class="action-btn" style="background:#1e293b" onclick="changePage(-1)">Trước</button>
+                    <div style="font-weight: 800; color: var(--accent-cyan);">Trang <span id="pageCurrent">1</span> / 100</div>
+                    <button class="action-btn" style="background:#1e293b" onclick="changePage(1)">Sau</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="zaloToast" class="zalo-toast"></div>
+
+    <script>
+        // --- DATA ENGINE ---
+        let map, scenarioChart, hospitalChart, currentDisease = 'ARI';
+        const fullDataset = [], ambulances = [];
+        let currentPage = 1;
+
+        const diseaseContext = {
+            'ARI': { color: '#00dfee', mae: 4.2, rmse: 6.8, acc: '96.2%', r0: 1.15, infected: 150, risk: 42, explain: 'AI LSTM Model: Nguy cơ ARI tăng cao khi nhiệt độ giảm xuống dưới 24°C. Tỷ lệ tiêm chủng 92% giúp kiểm soát lây nhiễm cộng đồng.' },
+            'Dengue': { color: '#ef4444', mae: 12.5, rmse: 18.2, acc: '91.8%', r0: 2.8, infected: 88, risk: 115, explain: 'SIR Model: Chỉ số Breteau vùng Quận 8 vượt ngưỡng 35. Nguy cơ bùng phát do mật độ muỗi cao và vắc-xin chưa bao phủ rộng.' },
+            'Flu': { color: '#f59e0b', mae: 8.1, rmse: 11.4, acc: '93.5%', r0: 1.4, infected: 42, risk: 12, explain: 'SARIMA Cúm mùa: Dự báo đỉnh dịch rơi vào T12/2025. CDC khuyến cáo rà soát tiêm phòng cho nhóm trẻ em dưới 5 tuổi.' }
+        };
+
+        // --- 1. GIS & FLEET ENGINE ---
+        function initMap() {
+            map = L.map('map').setView([10.762622, 106.660172], 12);
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
+
+            const buildPopup = (name, ctx) => `
+                <div style="min-width:200px; padding:5px;">
+                    <div class="popup-header">${name}</div>
+                    <div style="font-size:13px; color:#111;"><b>Ca nhiễm:</b> ${ctx.infected} | <b>Nguy cơ:</b> ${ctx.risk}</div>
+                    <div style="font-weight:800; color:var(--accent-blue); font-size:11px; margin-top:12px;">BIỆN PHÁP WHO:</div>
+                    <ul style="padding-left:15px; margin:5px 0; font-size:11px; line-height:1.6; color:#333;">
+                        <li>Khử khuẩn toàn diện bán kính R</li>
+                        <li>Trang bị bảo hộ N95/N100</li>
+                        <li>Sẵn sàng điều phối xe cứu thương</li>
+                    </ul>
+                </div>
+            `;
+
+            L.circle([10.741, 106.671], { color: '#ef4444', radius: 2000, fillOpacity: 0.25 }).addTo(map)
+                .bindPopup(buildPopup('CLUSTER QUẬN 8', diseaseContext['Dengue']))
+                .on('click', () => updateCoordination('Quận 8', 2000, [10, 5, 45, 20]));
+
+            L.circle([10.701, 106.601], { color: '#00dfee', radius: 3000, fillOpacity: 0.25 }).addTo(map)
+                .bindPopup(buildPopup('VÙNG ĐỆM BÌNH CHÁNH', diseaseContext['ARI']))
+                .on('click', () => updateCoordination('Bình Chánh', 3000, [25, 12, 55, 30]));
+
+            // Patient Flow Vectors
+            L.polyline([[10.701, 106.601], [10.741, 106.671]], { color: 'var(--flow-color)', weight: 4, dashArray: '10, 20', opacity: 0.7 }).addTo(map);
+
+            initFleet();
+        }
+
+        function initFleet() {
+            const fleet = [
+                { id: 'XE-01 (B.Chánh)', lat: 10.712, lng: 106.618, status: 'Trống' },
+                { id: 'XE-02 (Q.8)', lat: 10.745, lng: 106.678, status: 'Đang đón bệnh' },
+                { id: 'XE-03 (Q.1)', lat: 10.776, lng: 106.667, status: 'Trống' }
+            ];
+            const ambIcon = L.divIcon({ html: '<i class="fas fa-truck-medical" style="color:#ef4444; font-size:24px; filter: drop-shadow(0 0 5px white);"></i>', className: 'amb' });
+            fleet.forEach(d => { L.marker([d.lat, d.lng], { icon: ambIcon }).addTo(map).bindPopup(`<b>${d.id}</b>`); });
+            document.getElementById('ambulanceFleet').innerHTML = fleet.map(a => `
+                <div class="amb-item">
+                    <span><b>${a.id}</b></span>
+                    <span style="color:${a.status==='Trống'?'#22c55e':'#ef4444'}"><span class="status-dot" style="background:${a.status==='Trống'?'#22c55e':'#ef4444'}"></span>${a.status}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateCoordination(zone, r, hospitalData) {
+            document.getElementById('zone-title').innerText = zone;
+            document.getElementById('radius-val').innerText = `${r}m`;
+            document.getElementById('aiExplainText').innerText = diseaseContext[currentDisease].explain;
+            document.getElementById('fleet-advice').innerHTML = `<i class="fas fa-bolt"></i> AI: XE <b>${zone === 'Quận 8' ? 'XE-02' : 'XE-01'}</b> PHẢN ỨNG NHANH NHẤT.`;
+            updateHospitalChart(hospitalData);
+        }
+
+        // --- 2. METRICS & ML LOGIC ---
+        function switchDisease(type, el) {
+            currentDisease = type;
+            document.querySelectorAll('.disease-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            
+            const ctx = diseaseContext[type];
+            // Khôi phục Metrics
+            document.getElementById('maeVal').innerText = ctx.mae;
+            document.getElementById('rmseVal').innerText = ctx.rmse;
+            document.getElementById('accVal').innerText = ctx.acc;
+            document.getElementById('r0Val').innerText = ctx.r0;
+            document.getElementById('aiExplainText').innerText = ctx.explain;
+
+            // Update Chart Curve
+            const base = [45, 52, 68, 85, 72, 58, 50];
+            const mod = type === 'Dengue' ? 1.5 : (type === 'Flu' ? 0.75 : 1.0);
+            scenarioChart.data.datasets[0].data = base.map(v => v * mod);
+            scenarioChart.data.datasets[0].borderColor = ctx.color;
+            scenarioChart.update();
+        }
+
+        function initScenarioChart() {
+            const ctx = document.getElementById('scenarioChart').getContext('2d');
+            scenarioChart = new Chart(ctx, {
+                type: 'line', data: { labels: ['T2','T3','T4','T5','T6','T7','CN'], datasets: [{ label: 'SIR Forecasting', data: [45,52,68,85,72,58,50], borderColor: '#00dfee', fill: true, backgroundColor: 'rgba(0, 223, 238, 0.1)', tension: 0.4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 14 } } } } }
+            });
+        }
+
+        function updateHospitalChart(data) {
+            if(hospitalChart) hospitalChart.destroy();
+            const ctx = document.getElementById('hospitalCapacityChart').getContext('2d');
+            hospitalChart = new Chart(ctx, {
+                type: 'bar', data: { labels: ['Chợ Rẫy', 'Nhiệt Đới', '115', 'BV Q.8'], datasets: [{ data: data, backgroundColor: 'rgba(0, 223, 238, 0.7)', borderRadius: 10 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // --- 3. LOGISTICS & ZALO ---
+        function triggerZaloAlert(r, zone) {
+            const toast = document.getElementById('zaloToast');
+            toast.innerHTML = `<i class="fas fa-paper-plane mr-2"></i> <b>BÁO ĐỘNG ZALO:</b> Luồng dịch ${zone} R=${r}m! <br><small>Thông báo gửi tới: GĐ CDC, Đội PƯN, GĐ Sở Y tế.</small>`;
+            toast.style.display = 'block';
+            console.warn("[ZALO DISPATCHED]: Đây là thông tin thử nghiệm hệ thống AI.DFS dự báo dịch bệnh.");
+            L.circle([10.701, 106.601], { color: '#ef4444', radius: r, weight: 3, dashArray: '10, 15' }).addTo(map);
+            setTimeout(() => { toast.style.display = 'none'; }, 6000);
+        }
+
+        function generateData() {
+            const dists = ["Quận 1", "Quận 3", "Quận 5", "Quận 8", "Bình Chánh", "Hóc Môn", "Thủ Đức"];
+            for(let i=1; i<=5000; i++) fullDataset.push({ id: `EPI-${i.toString().padStart(4, '0')}`, dist: dists[Math.floor(Math.random()*7)], type: "ARI", sym: "Sốt cao, đau cơ", status: "Confirmed" });
+            document.getElementById('inventoryBody').innerHTML = dists.slice(0, 5).map(d => `<tr><td><b>TYT Phường/Xã ${d}</b></td><td>${Math.floor(Math.random()*1000)} liều</td><td>${Math.floor(Math.random()*200)}kg</td><td><span class="text-success">READY</span></td></tr>`).join('');
+        }
+
+        function renderDataset() {
+            document.getElementById('datasetBody').innerHTML = fullDataset.slice((currentPage-1)*50, currentPage*50).map(r => `<tr><td><b>${r.id}</b></td><td>${r.dist}</td><td>${r.type}</td><td style="font-size:12px;">${r.sym}</td><td><span class="text-success">Confirmed</span></td></tr>`).join('');
+            document.getElementById('pageCurrent').innerText = currentPage;
+        }
+
+        function changePage(dir) { currentPage = Math.max(1, Math.min(100, currentPage + dir)); renderDataset(); }
+
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(fullDataset);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "CDC_Dataset");
+            XLSX.writeFile(wb, "Nexus_Master_Full_Intelligence.xlsx");
+        }
+
+        function switchView(id, el) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(id + '-view').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            if(id === 'gis') setTimeout(() => map.invalidateSize(), 400);
+        }
+
+        window.onload = () => { initMap(); initScenarioChart(); updateHospitalChart([12, 18, 5, 45]); generateData(); renderDataset(); };
+    </script>
+</body>
+</html>

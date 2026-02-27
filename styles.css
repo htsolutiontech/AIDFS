@@ -1,0 +1,61 @@
+        :root {
+            --bg-dark: #070b14; --card-bg: #111c2e; --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8; --accent-cyan: #00dfee; --accent-blue: #3b82f6;
+            --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+            --zalo-blue: #0068ff; --flow-color: #f1c40f;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { margin: 0; background-color: var(--bg-dark); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; font-size: 15px; }
+        
+        /* Navigation Sidebar */
+        .sidebar { width: 300px; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05); padding: 30px; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; transition: all 0.3s ease; }
+        .nav-item { padding: 15px 20px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: var(--text-secondary); font-size: 1rem; font-weight: 600; }
+        .nav-item.active { background: rgba(59, 130, 246, 0.15); color: var(--accent-cyan); font-weight: 800; border: 1px solid rgba(59, 130, 246, 0.2); }
+
+        .main-content { flex: 1; overflow-y: auto; padding: 40px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* Disease Selector - Large UI */
+        .disease-selector { display: flex; gap: 12px; margin-bottom: 30px; background: #0f172a; padding: 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; }
+        .disease-btn { flex: 1; min-width: 150px; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-secondary); cursor: pointer; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; }
+        .disease-btn.active { background: var(--accent-blue); color: white; border: none; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+
+        /* GIS Map UI */
+        #map { height: 550px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); background: #000; z-index: 1; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 30px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+        .card-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase; font-weight: 900; letter-spacing: 1.5px; }
+
+        /* Metrics HUD */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric-box { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.03); text-align: center; }
+        .metric-val { font-size: 2.2rem; font-weight: 900; color: var(--accent-cyan); display: block; }
+        .metric-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-top: 8px; }
+
+        /* Popup WHO Styling */
+        .popup-header { font-weight: 900; color: var(--danger); font-size: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px; }
+        .popup-stat { font-size: 13px; color: #1e293b; margin-bottom: 5px; }
+        .advice-box { background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        .advice-title { color: var(--accent-blue); font-weight: 800; font-size: 10px; text-transform: uppercase; display: block; margin-bottom: 5px; }
+
+        /* Scenario Tabs */
+        .scenario-tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .s-tab { padding: 12px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #1e293b; color: var(--text-secondary); cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .s-tab.active { background: var(--accent-cyan); color: #070b14; }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1024px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; overflow-x: auto; padding: 15px; position: sticky; top: 0; z-index: 1000; }
+            #map { height: 380px; }
+            .main-content { padding: 20px; }
+        }
+
+        .table-container { border-radius: 24px; overflow-x: auto; border: 1px solid #1e293b; background: rgba(0,0,0,0.3); }
+        .custom-table { width: 100%; border-collapse: collapse; text-align: left; min-width: 900px; }
+        .custom-table th { padding: 18px 25px; background: #0f172a; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; }
+        .custom-table td { padding: 15px 25px; border-bottom: 1px solid #0f172a; font-size: 0.9rem; }
+
+        .action-btn { padding: 14px 28px; border-radius: 15px; border: none; font-weight: 900; cursor: pointer; display: flex; align-items: center; gap: 12px; text-transform: uppercase; font-size: 0.8rem; color: white; transition: 0.3s; }
+        .zalo-toast { position: fixed; bottom: 40px; right: 40px; background: var(--zalo-blue); padding: 25px 35px; border-radius: 25px; color: white; font-weight: 700; z-index: 3000; box-shadow: 0 20px 50px rgba(0,104,255,0.6); display: none; }
+    
